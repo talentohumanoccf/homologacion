@@ -10,6 +10,7 @@
         .step-active { border-bottom: 2px solid #2563eb; color: #2563eb; background: white; }
         .step-inactive { border-bottom: 2px solid transparent; color: #64748b; }
         .hidden { display: none; }
+        .progress-bar { transition: width 0.2s ease-in-out; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-8">
@@ -19,10 +20,24 @@
             <i data-lucide="user-check" class="text-blue-600 w-8 h-8"></i>
             Homologador de Cargos y Salarios
         </h1>
-        <p class="text-slate-500 mt-2">Mapeo inteligente entre cargos de mercado y estructura interna.</p>
+        <p class="text-slate-500 mt-2">Mapeo inteligente con barra de progreso y detección de campos.</p>
     </header>
 
-    <main class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <main class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+        
+        <!-- Overlay de Carga y Progreso -->
+        <div id="loading-overlay" class="hidden absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center p-8">
+            <div class="w-full max-w-md space-y-4 text-center">
+                <i data-lucide="cpu" class="w-12 h-12 text-blue-600 animate-pulse mx-auto"></i>
+                <h2 class="text-xl font-bold text-slate-900">Analizando coincidencias...</h2>
+                <p class="text-sm text-slate-500">Comparando misiones y nomenclaturas de cargos.</p>
+                <div class="w-full bg-slate-200 rounded-full h-4 overflow-hidden mt-4">
+                    <div id="progress-fill" class="progress-bar bg-blue-600 h-full w-0"></div>
+                </div>
+                <p id="progress-text" class="text-xs font-mono text-blue-600">0% completo</p>
+            </div>
+        </div>
+
         <!-- Navegación -->
         <div class="flex border-b border-slate-200 bg-slate-50/50">
             <button id="btn-step-upload" onclick="switchView('upload')" class="px-6 py-4 text-sm font-medium transition-colors step-active">
@@ -42,32 +57,33 @@
                         <i data-lucide="file-text" class="text-blue-500 w-5 h-5"></i>
                         Hoja "CONSOLIDADO" (Mercado)
                     </h3>
-                    <p class="text-xs text-slate-500">Copia las celdas de Excel (con encabezados) y pégalas abajo.</p>
-                    <textarea id="paste-market" class="w-full h-40 p-3 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Pegue aquí los datos de mercado..."></textarea>
+                    <p class="text-xs text-slate-500">Pega los datos del mercado aquí.</p>
+                    <textarea id="paste-market" class="w-full h-48 p-3 text-[10px] font-mono border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Pega aquí..."></textarea>
                     <div id="market-status" class="text-xs text-emerald-600 hidden flex items-center gap-1">
-                        <i data-lucide="check" class="w-3 h-3"></i> <span id="market-count">0</span> registros listos.
+                        <i data-lucide="check" class="w-3 h-3"></i> <span id="market-count">0</span> registros cargados.
                     </div>
                 </div>
 
                 <!-- Interno -->
                 <div class="space-y-4">
                     <h3 class="font-semibold flex items-center gap-2">
-                        <i data-lucide="user-check" class="text-emerald-500 w-5 h-5"></i>
+                        <i data-lucide="briefcase" class="text-emerald-500 w-5 h-5"></i>
                         Hoja "Cargos Comfamiliar"
                     </h3>
-                    <p class="text-xs text-slate-500">Copia las celdas con Cargo y Sueldo Base y pégalas abajo.</p>
-                    <textarea id="paste-internal" class="w-full h-40 p-3 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Pegue aquí los cargos internos..."></textarea>
+                    <p class="text-xs text-slate-500">Pega los cargos internos aquí.</p>
+                    <textarea id="paste-internal" class="w-full h-48 p-3 text-[10px] font-mono border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Pega aquí..."></textarea>
                     <div id="internal-status" class="text-xs text-emerald-600 hidden flex items-center gap-1">
-                        <i data-lucide="check" class="w-3 h-3"></i> <span id="internal-count">0</span> cargos listos.
+                        <i data-lucide="check" class="w-3 h-3"></i> <span id="internal-count">0</span> cargos internos cargados.
                     </div>
                 </div>
             </div>
 
-            <div class="pt-4 flex justify-center">
-                <button id="btn-process" onclick="autoMatch()" class="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none transition-all flex items-center gap-2" disabled>
-                    Iniciar Homologación Automática
-                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            <div class="pt-4 flex flex-col items-center gap-4">
+                <button id="btn-process" onclick="autoMatchAsync()" class="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none transition-all flex items-center gap-3" disabled>
+                    Iniciar Procesamiento Inteligente
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
                 </button>
+                <p id="error-msg" class="text-red-500 text-xs font-medium hidden">Faltan datos o columnas requeridas ("Cargo").</p>
             </div>
         </div>
 
@@ -75,141 +91,174 @@
         <div id="view-matching" class="hidden">
             <div class="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-center">
                 <div class="flex items-center gap-2 text-blue-700">
-                    <i data-lucide="info" class="w-5 h-5"></i>
-                    <span class="text-sm font-medium">Revisa las sugerencias y ajusta donde sea necesario.</span>
+                    <i data-lucide="list-checks" class="w-5 h-5"></i>
+                    <span class="text-sm font-medium">Análisis completado. Revisa y exporta.</span>
                 </div>
-                <button onclick="exportData()" class="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded-lg text-sm font-bold hover:bg-blue-50">
-                    <i data-lucide="download" class="w-4 h-4"></i>
-                    Exportar a Excel/Sheets
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="switchView('upload')" class="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm font-medium">Volver</button>
+                    <button onclick="exportData()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Exportar TSV para Excel
+                    </button>
+                </div>
             </div>
             
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+            <div class="overflow-x-auto max-h-[600px]">
+                <table class="w-full text-left border-collapse sticky-header">
                     <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="px-6 py-4 border-b font-semibold">Cargo Mercado</th>
-                            <th class="px-6 py-4 border-b font-semibold">Misión / Descripción</th>
-                            <th class="px-6 py-4 border-b font-semibold">Cargo Homologado (Interno)</th>
-                            <th class="px-6 py-4 border-b text-center font-semibold">Estado</th>
+                        <tr class="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider sticky top-0 z-10">
+                            <th class="px-6 py-4 border-b">Cargo Mercado</th>
+                            <th class="px-6 py-4 border-b">Misión Detectada</th>
+                            <th class="px-6 py-4 border-b">Homologación Sugerida</th>
+                            <th class="px-6 py-4 border-b text-center">Ok</th>
                         </tr>
                     </thead>
                     <tbody id="matching-body" class="text-sm divide-y divide-slate-100">
-                        <!-- Se llena dinámicamente -->
+                        <!-- Dinámico -->
                     </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <footer class="max-w-6xl mx-auto mt-8 text-center text-slate-400 text-xs">
-        * El sistema utiliza comparación semántica para sugerir el cargo interno basado en el nombre y la misión del cargo de mercado.
-    </footer>
-
     <script>
         let marketData = [];
         let internalPositions = [];
         let mappings = {};
 
-        // Inicializar iconos
         lucide.createIcons();
 
-        // Cálculo de similitud
+        // Función para normalizar nombres de columnas
+        function findColumn(obj, possibleNames) {
+            const keys = Object.keys(obj);
+            for (let name of possibleNames) {
+                const found = keys.find(k => k.toLowerCase().trim() === name.toLowerCase());
+                if (found) return obj[found];
+            }
+            return null;
+        }
+
         function calculateSimilarity(str1, str2) {
             const s1 = (str1 || "").toLowerCase().trim();
             const s2 = (str2 || "").toLowerCase().trim();
+            if (!s1 || !s2) return 0;
             if (s1 === s2) return 1;
-            const words1 = s1.split(/\s+/);
-            const words2 = s2.split(/\s+/);
+            
+            const words1 = s1.split(/\s+/).filter(w => w.length > 2);
+            const words2 = s2.split(/\s+/).filter(w => w.length > 2);
+            if (words1.length === 0 || words2.length === 0) return 0;
+
             const intersection = words1.filter(word => words2.includes(word));
             return intersection.length / Math.max(words1.length, words2.length);
         }
 
-        // Manejar Pegado
-        function processPaste(type, text) {
-            const rows = text.trim().split('\n').map(row => row.split('\t'));
-            const headers = rows[0].map(h => h.trim());
-            const data = rows.slice(1).map(row => {
-                let obj = {};
-                headers.forEach((h, i) => obj[h] = row[i]);
-                return obj;
+        function handlePaste(id, type) {
+            const el = document.getElementById(id);
+            el.addEventListener('input', () => {
+                const text = el.value.trim();
+                if (!text) return;
+
+                const rows = text.split('\n').map(row => row.split('\t'));
+                if (rows.length < 2) return;
+
+                const headers = rows[0].map(h => h.trim());
+                const data = rows.slice(1).map(row => {
+                    let obj = {};
+                    headers.forEach((h, i) => obj[h] = row[i]);
+                    return obj;
+                });
+
+                if (type === 'market') {
+                    marketData = data;
+                    document.getElementById('market-count').innerText = data.length;
+                    document.getElementById('market-status').classList.remove('hidden');
+                } else {
+                    internalPositions = data;
+                    document.getElementById('internal-count').innerText = data.length;
+                    document.getElementById('internal-status').classList.remove('hidden');
+                }
+                checkAvailability();
             });
-
-            if (type === 'market') {
-                marketData = data;
-                document.getElementById('market-count').innerText = data.length;
-                document.getElementById('market-status').classList.remove('hidden');
-                document.getElementById('paste-market').value = `✓ ${data.length} registros cargados correctamente.`;
-                document.getElementById('paste-market').disabled = true;
-            } else {
-                internalPositions = data;
-                document.getElementById('internal-count').innerText = data.length;
-                document.getElementById('internal-status').classList.remove('hidden');
-                document.getElementById('paste-internal').value = `✓ ${data.length} cargos cargados correctamente.`;
-                document.getElementById('paste-internal').disabled = true;
-            }
-
-            checkProcessAvailability();
         }
 
-        document.getElementById('paste-market').addEventListener('paste', (e) => {
-            setTimeout(() => processPaste('market', e.target.value), 10);
-        });
+        function checkAvailability() {
+            const btn = document.getElementById('btn-process');
+            const error = document.getElementById('error-msg');
+            
+            const hasMarketCargo = marketData.length > 0 && findColumn(marketData[0], ['Cargo', 'Nombre Cargo', 'Puesto']);
+            const hasInternalCargo = internalPositions.length > 0 && findColumn(internalPositions[0], ['Cargo', 'Nombre Cargo']);
 
-        document.getElementById('paste-internal').addEventListener('paste', (e) => {
-            setTimeout(() => processPaste('internal', e.target.value), 10);
-        });
-
-        function checkProcessAvailability() {
-            if (marketData.length > 0 && internalPositions.length > 0) {
-                document.getElementById('btn-process').disabled = false;
-                document.getElementById('btn-step-matching').disabled = false;
+            if (hasMarketCargo && hasInternalCargo) {
+                btn.disabled = false;
+                error.classList.add('hidden');
+            } else if (marketData.length > 0 || internalPositions.length > 0) {
+                error.classList.remove('hidden');
             }
         }
+
+        handlePaste('paste-market', 'market');
+        handlePaste('paste-internal', 'internal');
 
         function switchView(view) {
-            const uploadView = document.getElementById('view-upload');
-            const matchingView = document.getElementById('view-matching');
-            const btnUpload = document.getElementById('btn-step-upload');
-            const btnMatching = document.getElementById('btn-step-matching');
-
-            if (view === 'upload') {
-                uploadView.classList.remove('hidden');
-                matchingView.classList.add('hidden');
-                btnUpload.className = "px-6 py-4 text-sm font-medium transition-colors step-active";
-                btnMatching.className = "px-6 py-4 text-sm font-medium transition-colors step-inactive";
-            } else {
-                uploadView.classList.add('hidden');
-                matchingView.classList.remove('hidden');
-                btnUpload.className = "px-6 py-4 text-sm font-medium transition-colors step-inactive";
-                btnMatching.className = "px-6 py-4 text-sm font-medium transition-colors step-active";
-            }
+            document.getElementById('view-upload').classList.toggle('hidden', view !== 'upload');
+            document.getElementById('view-matching').classList.toggle('hidden', view !== 'matching');
+            document.getElementById('btn-step-upload').className = view === 'upload' ? "px-6 py-4 text-sm font-medium transition-colors step-active" : "px-6 py-4 text-sm font-medium transition-colors step-inactive";
+            document.getElementById('btn-step-matching').className = view === 'matching' ? "px-6 py-4 text-sm font-medium transition-colors step-active" : "px-6 py-4 text-sm font-medium transition-colors step-inactive";
         }
 
-        function autoMatch() {
+        // PROCESAMIENTO ASÍNCRONO CON BARRA DE PROGRESO
+        async function autoMatchAsync() {
+            const overlay = document.getElementById('loading-overlay');
+            const fill = document.getElementById('progress-fill');
+            const pText = document.getElementById('progress-text');
+            
+            overlay.classList.remove('hidden');
             mappings = {};
-            marketData.forEach((mItem, mIndex) => {
+            
+            const total = marketData.length;
+            const batchSize = 10; // Procesar de 10 en 10 para no congelar el UI
+
+            for (let i = 0; i < total; i++) {
+                const mItem = marketData[i];
+                const mCargo = findColumn(mItem, ['Cargo', 'Nombre Cargo']);
+                const mMision = findColumn(mItem, ['Misión', 'Mision', 'Descripción']);
+
                 let bestMatch = "";
                 let maxScore = -1;
 
-                internalPositions.forEach((iItem) => {
-                    const scoreCargo = calculateSimilarity(mItem.Cargo, iItem.Cargo);
-                    const scoreMision = calculateSimilarity(mItem.Misión, iItem.Cargo);
+                internalPositions.forEach(iItem => {
+                    const iCargo = findColumn(iItem, ['Cargo', 'Nombre Cargo']);
+                    
+                    const scoreCargo = calculateSimilarity(mCargo, iCargo);
+                    const scoreMision = calculateSimilarity(mMision, iCargo);
                     const finalScore = (scoreCargo * 0.7) + (scoreMision * 0.3);
 
                     if (finalScore > maxScore) {
                         maxScore = finalScore;
-                        bestMatch = iItem.Cargo;
+                        bestMatch = iCargo;
                     }
                 });
 
-                if (maxScore > 0.15) {
-                    mappings[mIndex] = bestMatch;
+                if (maxScore > 0.1) {
+                    mappings[i] = bestMatch;
                 }
-            });
+
+                // Actualizar progreso cada X registros
+                if (i % batchSize === 0 || i === total - 1) {
+                    const percent = Math.round(((i + 1) / total) * 100);
+                    fill.style.width = percent + '%';
+                    pText.innerText = `${percent}% completo (${i + 1} de ${total})`;
+                    // Pequeña pausa para dejar que el navegador respire y pinte la barra
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
 
             renderTable();
-            switchView('matching');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                switchView('matching');
+                document.getElementById('btn-step-matching').disabled = false;
+            }, 500);
         }
 
         function renderTable() {
@@ -220,26 +269,31 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50/50 transition-colors";
                 
-                const options = internalPositions.map(pos => 
-                    `<option value="${pos.Cargo}" ${mappings[idx] === pos.Cargo ? 'selected' : ''}>${pos.Cargo}</option>`
-                ).join('');
+                const mCargo = findColumn(item, ['Cargo', 'Nombre Cargo']) || 'Desconocido';
+                const mMision = findColumn(item, ['Misión', 'Mision', 'Descripción']) || '-';
+                const currentMapping = mappings[idx] || "";
+
+                const options = internalPositions.map(pos => {
+                    const iCargo = findColumn(pos, ['Cargo', 'Nombre Cargo']);
+                    return `<option value="${iCargo}" ${currentMapping === iCargo ? 'selected' : ''}>${iCargo}</option>`;
+                }).join('');
 
                 tr.innerHTML = `
-                    <td class="px-6 py-4 font-medium">
-                        <div class="text-slate-900">${item.Cargo || 'N/A'}</div>
-                        <div class="text-[10px] text-slate-400">Estudios: ${item.Estudios || '-'}</div>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800">${mCargo}</div>
+                        <div class="text-[10px] text-slate-400">Sector: ${item.Sector || item.Muestra || '-'}</div>
                     </td>
-                    <td class="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title="${item.Misión || ''}">
-                        ${item.Misión || "Sin misión definida"}
+                    <td class="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title="${mMision}">
+                        ${mMision}
                     </td>
                     <td class="px-6 py-4">
-                        <select onchange="updateMapping(${idx}, this.value)" class="w-full p-2 bg-white border border-slate-200 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none">
-                            <option value="">Seleccionar cargo...</option>
+                        <select onchange="mappings[${idx}] = this.value; updateStatus(${idx})" class="w-full p-2 bg-white border border-slate-200 rounded text-xs outline-none focus:ring-2 focus:ring-blue-100">
+                            <option value="">-- Sin coincidencia --</option>
                             ${options}
                         </select>
                     </td>
                     <td class="px-6 py-4 text-center" id="status-${idx}">
-                        ${mappings[idx] ? '<i data-lucide="check-circle" class="text-emerald-500 mx-auto w-5 h-5"></i>' : '<div class="w-2 h-2 rounded-full bg-amber-400 mx-auto"></div>'}
+                        ${currentMapping ? '<i data-lucide="check-circle" class="text-emerald-500 mx-auto w-5 h-5"></i>' : '<i data-lucide="help-circle" class="text-amber-400 mx-auto w-5 h-5"></i>'}
                     </td>
                 `;
                 body.appendChild(tr);
@@ -247,35 +301,32 @@
             lucide.createIcons();
         }
 
-        function updateMapping(idx, value) {
-            mappings[idx] = value;
-            const statusCell = document.getElementById(`status-${idx}`);
-            if (value) {
-                statusCell.innerHTML = '<i data-lucide="check-circle" class="text-emerald-500 mx-auto w-5 h-5"></i>';
+        function updateStatus(idx) {
+            const cell = document.getElementById(`status-${idx}`);
+            if (mappings[idx]) {
+                cell.innerHTML = '<i data-lucide="check-circle" class="text-emerald-500 mx-auto w-5 h-5"></i>';
             } else {
-                statusCell.innerHTML = '<div class="w-2 h-2 rounded-full bg-amber-400 mx-auto"></div>';
+                cell.innerHTML = '<i data-lucide="help-circle" class="text-amber-400 mx-auto w-5 h-5"></i>';
             }
             lucide.createIcons();
         }
 
         function exportData() {
             if (marketData.length === 0) return;
-            
             const headers = [...Object.keys(marketData[0]), "Homologado"];
-            let csvContent = headers.join('\t') + '\n';
+            let tsv = headers.join('\t') + '\n';
 
             marketData.forEach((item, idx) => {
                 const row = [...Object.values(item), mappings[idx] || ""];
-                csvContent += row.join('\t') + '\n';
+                tsv += row.join('\t') + '\n';
             });
 
-            const blob = new Blob([csvContent], { type: 'text/tab-separated-values' });
+            const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Estudio_Salarial_Homologado.tsv';
+            a.download = `Estudio_Homologado_${new Date().toLocaleDateString()}.tsv`;
             a.click();
-            URL.revokeObjectURL(url);
         }
     </script>
 </body>
